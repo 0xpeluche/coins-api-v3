@@ -1,0 +1,29 @@
+{
+  "name": "coins-api-v3",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DefiLlama/coins-api-v3.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/DefiLlama/coins-api-v3/issues"
+  },
+  "homepage": "https://github.com/DefiLlama/coins-api-v3#readme",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.744.0",
+    "@aws-sdk/util-dynamodb": "^3.744.0",
+    "@elastic/elasticsearch": "^8.17.0",
+    "hyper-express": "^6.17.3",
+    "ioredis": "^5.5.0",
+    "kafkajs": "^2.2.4",
+    "pm2": "^5.4.3",
+    "progress": "^2.0.3"
+  }
+}
