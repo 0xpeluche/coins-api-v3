@@ -16,12 +16,11 @@ let manifest = fs.readFileSync(manifestPath, 'utf8')
   .map(line => JSON.parse(line))
 
 
-const metadatRecords = []
 // Promisified function to read and process gzipped file
 async function readGzippedFile(file) {
   const fileName = path.basename(file.dataFileS3Key)
   const filePath = path.join(cacheFolderPath, fileName)
-  console.log(`Processing file: ${filePath}`)
+  console.log(`Processing file: ${fileName}`)
 
   const fileStream = fs.createReadStream(filePath)
   const gzipStream = zlib.createGunzip()
@@ -36,7 +35,7 @@ async function readGzippedFile(file) {
     rl.on('line', processLine)
 
     rl.on('close', () => {
-      console.log('File processing completed. Total lines:', lineCount)
+      console.log('File processing completed. Total lines:', lineCount / 1e6, 'M')
       resolve()
     })
 
@@ -55,17 +54,45 @@ async function readGzippedFile(file) {
 
 const metadataMap = {}
 
+try {
+  const metadataFile = fs.readFileSync(path.join(cacheFolderPath, 'metadataRecords.json'), 'utf8')
+  const metadataRecords = JSON.parse(metadataFile)
+  metadataRecords.forEach(record => {
+    metadataMap[record.PK] = record
+    if (record.redirects) record.redirects = new Set(record.redirects)
+  })
+  console.log('Loaded metadata records:', Object.keys(metadataMap).length)
+} catch (error) {
+  console.error('Error reading metadataFile:', error)
+}
+
+
 async function run() {
-  for (const entry of manifest.slice(0, 1)) {
+  let i = 0
+  for (const entry of manifest) {
+    i++
     try {
       await readGzippedFile(entry)
+      writeMetadataRecordsToFile()
     } catch (error) {
       console.error('Error processing file:', error)
     }
+    console.log('Processed file:', i + '/' + manifest.length)
   }
-  const metadataRecords = Object.values(metadataMap)
-  console.table(metadataRecords)
-  console.log('All files processed', metadatRecords.length)
+  console.log('All files processed!')
+}
+
+function writeMetadataRecordsToFile() {
+  let metadataRecords = Object.values(metadataMap)
+  console.log('Total metadata records:', metadataRecords.length)
+  // to convert Set to Array
+  metadataRecords = metadataRecords.map(record => {
+    const { redirects, ...clone } = record
+    if (!redirects) return clone
+    return { ...clone, redirects: [...redirects] }
+  })
+  const metadataRecordsString = JSON.stringify(metadataRecords)
+  fs.writeFileSync(path.join(cacheFolderPath, 'metadataRecords.json'), metadataRecordsString)
 }
 
 run().catch((error) => {
