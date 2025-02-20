@@ -2,6 +2,7 @@
 const fs = require('fs')
 const path = require('path')
 const { getProducer } = require('../db/kafka')
+const { normalizeCoinId } = require('../utils')
 
 
 // Paths
@@ -9,7 +10,8 @@ const cacheFolderPath = path.join(__dirname, '../.cache')
 const metadataFile = fs.readFileSync(path.join(cacheFolderPath, 'metadataRecords.json'), 'utf8')
 const metadataRecords = JSON.parse(metadataFile)
 metadataRecords.forEach(record => {
-  const pid = record.PK
+  const pid = normalizeCoinId(record.PK)
+  if (Array.isArray(record.redirects)) record.redirects = record.redirects.map(normalizeCoinId)
   record.pid = pid
   delete record.PK
   delete record.SK
@@ -28,14 +30,13 @@ metadataRecords.forEach(record => {
 })
 console.log('Loaded metadata records:', metadataRecords.length)
 
-console.table(metadataRecords.slice(0, 100))
-
 
 async function run() {
   const producer = await getProducer()
-  const chunkCount = Math.ceil(metadataRecords.length / 100)
+  const chunkSize = 1000
+  const chunkCount = Math.ceil(metadataRecords.length / chunkSize)
   for (let i = 0; i < chunkCount; i++) {
-    const chunk = metadataRecords.slice(i * 100, (i + 1) * 100).map(i => ({ value: JSON.stringify(i) }))
+    const chunk = metadataRecords.slice(i * chunkSize, (i + 1) * chunkSize).map(i => ({ value: JSON.stringify(i) }))
     await producer.send({
       topic: 'coins-metadata-test',
       messages: chunk,

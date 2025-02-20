@@ -20,6 +20,7 @@
     "@aws-sdk/client-s3": "^3.744.0",
     "@aws-sdk/util-dynamodb": "^3.744.0",
     "@elastic/elasticsearch": "^8.17.0",
+    "@supercharge/promise-pool": "^3.2.0",
     "hyper-express": "^6.17.3",
     "ioredis": "^5.5.0",
     "kafkajs": "^2.2.4",
