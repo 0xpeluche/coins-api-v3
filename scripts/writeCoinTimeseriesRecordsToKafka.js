@@ -11,6 +11,23 @@ const cacheFolderPath = path.join(__dirname, '../.cache')
 const { unmarshall } = require('@aws-sdk/util-dynamodb')
 const { normalizeCoinId, sleep } = require('../utils')
 const { getProducer } = require('../db/kafka')
+const logData = fs.readFileSync(__dirname+'/../runLog.log', 'utf8');
+
+const processedFileSet = new Set();
+
+try {
+  const regex = /Processing file: (.*): .* \(/g;
+  
+  let match;
+  while ((match = regex.exec(logData)) !== null) {
+    processedFileSet.add(match[1]);
+  }
+} catch (error) {
+  console.error('Error:', error)  
+}
+
+
+console.log('Processed file count:', processedFileSet.size)
 
 let manifest = fs.readFileSync(manifestPath, 'utf8')
   .split('\n')
@@ -73,6 +90,7 @@ let writeQueue = []
 let producer
 let messageCount = 0
 let lastMessageCount = 0
+let lastMessageCountTime = Date.now()
 
 async function writeToKafka(message) {
   writeQueue.push(message)
@@ -83,19 +101,21 @@ async function writeToKafka(message) {
     await writeQueueToFile(tmpQueue)
     messageCount += tmpQueue.length
 
-    if (messageCount - lastMessageCount > 1e5) {
-      console.log('Sent messages:', Number(messageCount / 1e6).toFixed(3), 'M')
+    if (messageCount - lastMessageCount > 5e5) {
+      const currentTime = Date.now()
+      console.log('Sent messages:', Number(messageCount / 1e6).toFixed(3), 'M', 'Time taken:', (currentTime - lastMessageCountTime) / 1000, 'seconds', 'Messages per second:', (messageCount - lastMessageCount) / ((currentTime - lastMessageCountTime) / 1000))
+      lastMessageCountTime = currentTime
       lastMessageCount = messageCount
     }
   }
+}
 
-  async function writeQueueToFile(messages) {
-    const chunkSize = 1000
-    const chunkCount = Math.ceil(messages.length / chunkSize)
-    for (let i = 0; i < chunkCount; i++) {
-      const chunk = messages.slice(i * chunkSize, (i + 1) * chunkSize).map(i => ({ value: JSON.stringify(i) }))
-      await producer.send({ topic: 'test-topic', messages: chunk, })
-    }
+async function writeQueueToFile(messages) {
+  const chunkSize = 1000
+  const chunkCount = Math.ceil(messages.length / chunkSize)
+  for (let i = 0; i < chunkCount; i++) {
+    const chunk = messages.slice(i * chunkSize, (i + 1) * chunkSize).map(i => ({ value: JSON.stringify(i) }))
+    await producer.send({ topic: 'coins-timeseries', messages: chunk, })
   }
 }
 
@@ -103,9 +123,14 @@ async function writeToKafka(message) {
 async function run() {
   producer = await getProducer()
   await PromisePool
-    .withConcurrency(4)
+    .withConcurrency(1)
     .for(manifest)
     .process(async (file, i) => {
+      if (processedFileSet.has(file.dataFileS3Key)) {
+        console.log('Skipping file:', file.dataFileS3Key)
+        messageCount += file.itemCount
+        return
+      }
       console.log('Processing file:', file.dataFileS3Key, i + '/' + manifest.length, 'items:', file.itemCount)
       console.time('Processing file: ' + file.dataFileS3Key)
       try {
@@ -118,9 +143,7 @@ async function run() {
       await sleep(15 * 60 * 1000) // sleep for 5 minutes
     })
   // write the missing records
-  const messages = writeQueue.map(i => ({ value: JSON.stringify(i) }))
-  await producer.send({ topic: 'test-topic', messages, })
-
+  await writeQueueToFile(writeQueue)
   console.log('All files processed!')
 }
 
