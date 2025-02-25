@@ -14,6 +14,8 @@ const { getProducer } = require('../db/kafka')
 const logData = fs.readFileSync(__dirname+'/../runLog.log', 'utf8');
 
 const processedFileSet = new Set();
+processedFileSet.add('AWSDynamoDB/01739392949159-0ccc4c81/data/soiwuijrsy7cvkakihy264lxgu.json.gz')
+processedFileSet.add('AWSDynamoDB/01739392949159-0ccc4c81/data/6v2wco3gae6c7gbhtjaosjgzda.json.gz')
 
 try {
   const regex = /Processing file: (.*): .* \(/g;
@@ -138,9 +140,10 @@ async function run() {
       } catch (error) {
         console.error('Error processing file:', error)
       }
-      console.log('Processed file:', i + '/' + manifest.length, 'items:', file.itemCount)
+      await writeQueueToFile(writeQueue)
+      console.log('Processed file:', i + '/' + manifest.length, 'items:', file.itemCount, 'complete: ', Number(i / manifest.length * 100).toFixed(3) + '%', 'time: ', new Date().toLocaleString())
       console.timeEnd('Processing file: ' + file.dataFileS3Key)
-      await sleep(15 * 60 * 1000) // sleep for 5 minutes
+      await sleep(5 * 60 * 1000) // sleep for 5 minutes
     })
   // write the missing records
   await writeQueueToFile(writeQueue)
