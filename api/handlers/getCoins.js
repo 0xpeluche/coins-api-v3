@@ -10,7 +10,7 @@ async function getCoinsHandler(request, reply) {
       });
     }
 
-    const pidArray = pids.split(",").map(pid => pid.trim()).filter(pid => pid);
+    const pidArray = pids.split(",").map(pid => pid.trim().toLowerCase()).filter(pid => pid);
 
     if (pidArray.length === 0) {
       return reply.status(400).send({
