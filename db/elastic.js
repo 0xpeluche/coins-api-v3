@@ -45,4 +45,42 @@ function addYearAndMonth(index) {
   return `${index}-${date.getUTCFullYear()}-${date.getUTCMonth()}`
 }
 
-module.exports = { getClient, writeLog }
+async function getMetadataForPids(pids) {
+  const client = getClient();
+  if (!client) {
+    console.error('No Elasticsearch client available.');
+    return {};
+  }
+
+  try {
+    const result = await client.search({
+      index: 'coins-metadata',
+      size: pids.length,
+      body: {
+        query: {
+          bool: {
+            should: pids.map(pid => ({ term: { pid } })),
+            minimum_should_match: 1
+          }
+        }
+      }
+    });
+
+    const metadataMap = {};
+    if (result.hits && result.hits.hits.length) {
+      for (const hit of result.hits.hits) {
+        const src = hit._source;
+        if (src && src.pid) {
+          metadataMap[src.pid] = src;
+        }
+      }
+    }
+
+    return metadataMap;
+  } catch (error) {
+    console.error('Error in getMetadataForPids:', error);
+    return {};
+  }
+}
+
+module.exports = { getClient, writeLog, getMetadataForPids }
