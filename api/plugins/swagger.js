@@ -6,7 +6,7 @@ async function setupSwagger(fastify) {
     openapi: {
       info: {
         title: 'API Documentation',
-        description: 'Documentation de l\'API',
+        description: 'Documentation',
         version: '1.0.0'
       }
     }
