@@ -11,21 +11,22 @@ const cacheFolderPath = path.join(__dirname, '../.cache')
 const { unmarshall } = require('@aws-sdk/util-dynamodb')
 const { normalizeCoinId, sleep } = require('../utils')
 const { getProducer } = require('../db/kafka')
-const logData = fs.readFileSync(__dirname+'/../runLog.log', 'utf8');
+const logData = fs.readFileSync(__dirname + '/../runLog.log', 'utf8');
 
 const processedFileSet = new Set();
 processedFileSet.add('AWSDynamoDB/01739392949159-0ccc4c81/data/soiwuijrsy7cvkakihy264lxgu.json.gz')
 processedFileSet.add('AWSDynamoDB/01739392949159-0ccc4c81/data/6v2wco3gae6c7gbhtjaosjgzda.json.gz')
+processedFileSet.add('AWSDynamoDB/01739392949159-0ccc4c81/data/zzs7dr7cvm7mnn22dsw5ltvqfm.json.gz')
 
 try {
   const regex = /Processing file: (.*): .* \(/g;
-  
+
   let match;
   while ((match = regex.exec(logData)) !== null) {
     processedFileSet.add(match[1]);
   }
 } catch (error) {
-  console.error('Error:', error)  
+  console.error('Error:', error)
 }
 
 
@@ -143,7 +144,8 @@ async function run() {
       await writeQueueToFile(writeQueue)
       console.log('Processed file:', i + '/' + manifest.length, 'items:', file.itemCount, 'complete: ', Number(i / manifest.length * 100).toFixed(3) + '%', 'time: ', new Date().toLocaleString())
       console.timeEnd('Processing file: ' + file.dataFileS3Key)
-      await sleep(5 * 60 * 1000) // sleep for 5 minutes
+      if (file.itemCount > 2e6)
+        await sleep(5 * 60 * 1000) // sleep for 5 minutes
     })
   // write the missing records
   await writeQueueToFile(writeQueue)

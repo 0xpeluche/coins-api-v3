@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "write-s3-to-es": "node scripts/writeCoinTimeseriesRecordsToKafka.js  2>&1 | tee -a runLog.log"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.744.0",
     "@aws-sdk/util-dynamodb": "^3.744.0",
+    "@defillama/sdk": "^5.0.122",
     "@elastic/elasticsearch": "^8.17.0",
     "@supercharge/promise-pool": "^3.2.0",
     "hyper-express": "^6.17.3",
