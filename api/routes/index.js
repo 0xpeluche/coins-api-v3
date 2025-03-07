@@ -1,7 +1,9 @@
-const { getCoinsRoutes } = require('./getCoins')
+const { Router } = require("hyper-express");
+const router = new Router();
+const coinsHandler = require("../handlers/coinsHandler");
 
-async function registerRoutes(fastify) {
-  await fastify.register(getCoinsRoutes);
-}
+router.get("/current", coinsHandler.getCoinsCurrentHandler);
+router.get("/metadata", coinsHandler.getCoinsMetadataHandler);
+router.get("/timeseries", coinsHandler.getCoinsTimeseriesHandler);
 
-module.exports = { registerRoutes }
+module.exports = router;

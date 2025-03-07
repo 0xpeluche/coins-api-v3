@@ -1,45 +1,20 @@
-const fastify = require('fastify')
-const { setupSwagger } = require('./plugins/swagger')
-const { registerRoutes } = require('./routes')
-const { getRedis } = require('../db/redis')
+const { Server } = require("hyper-express");
+const coinsRoutes = require("./routes");
+const app = new Server();
 
-const server = fastify({
-  logger: true,
-  connectionTimeout: 30000,
-  keepAliveTimeout: 5000,
-});
-
-server.addHook('onRequest', (request, reply, done) => {
-  reply.header('Access-Control-Allow-Origin', '*');
-  reply.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key');
-
-  if (request.method === 'OPTIONS') {
-    reply.send();
-    return;
+app.use(async (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key");
+  if (req.method === "OPTIONS") {
+    return res.send(200);
   }
-
-  done();
+  next();
 });
 
-setupSwagger(server);
-registerRoutes(server);
+app.use("/api/coins", coinsRoutes);
 
-server.addHook('onClose', (instance, done) => {
-  const client = getRedis();
-  client.disconnect();
-  done();
-});
-
-server.setErrorHandler((error, request, reply) => {
-  server.log.error(`Error: ${error.message}`);
-  reply.status(500).send({ error: "Internal Server Error" });
-});
-
-server.listen({ port: 3000, host: '127.0.0.1' }, (err, address) => {
-  if (err) {
-    server.log.error(err);
-    process.exit(1);
-  }
-  server.log.info(`Server listening at ${address}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server listening on port http://127.0.0.1:${PORT}/api/coins`);
 });

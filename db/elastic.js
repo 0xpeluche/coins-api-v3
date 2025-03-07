@@ -75,7 +75,6 @@ async function getMetadataForPids(pids) {
         }
       }
     }
-
     return metadataMap;
   } catch (error) {
     console.error('Error in getMetadataForPids:', error);
