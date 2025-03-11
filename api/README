@@ -1,0 +1,70 @@
+# API Prototype PR
+
+## Overview
+
+This is a prototype PR of an API that manages cryptocurrency metadata, current prices, and timeseries data using a PM2 cluster with load balancing and local caching.
+
+## Features
+
+- **PM2 Cluster Setup**:
+  - `index.js` configured to launch 4 instances of the API using PM2 for load balancing and auto-restart.
+- **Local Cache Management (controlled by PM2 instance 0)**:
+  - On API initialization, instance 0 fetches all metadata from Elasticsearch (ES) to create a local file.
+  - A cron job runs every 15 minutes to refresh the metadata.
+- **Multiple Routes**:
+
+### Routes
+
+#### 1. Metadata Route
+
+`GET /api/coins/metadata?pid=bitcoin,ethereum`
+
+- Retrieves metadata of a token based on the specified `pid(s)`.
+- Process:
+  - Check in the local cache if the `pid` exists:
+    - If **Yes**, return the object.
+    - If **No**, check in Elasticsearch (ES):
+      - If **found**, cache the metadata (helps until the next cron job).
+      - If **not found**, return an error.
+
+#### 2. Current Price Route
+
+`GET /api/coins/current?pid=bitcoin,ethereum&withMetadata=true&withTTL=true`
+
+- Retrieves the current price of a token based on the specified `pid(s)`.
+- Options:
+  - `withMetadata=true`: Includes metadata from the same source as the metadata route.
+  - `withTTL=true`: Includes TTL information.
+- Process:
+  - First, check in Redis via `price_${pid}`:
+    - If **Yes**, return the object (with metadata if requested).
+    - If **No**, fallback to querying Elasticsearch (ES) (potential recovery if Nifi/Redis fails).
+    - **Note**: Currently, no fallback is implemented, it simply returns an error.
+
+#### 3. Timeseries Route
+
+`GET /api/coins/timeseries?pid=bitcoin&startDate=2023-01-01&endDate=2023-01-31` OR `GET /api/coins/timeseries?pid=bitcoin,ethereum&timestamp=1673000000`
+
+- Retrieves historical timeseries data of a token based on the specified `pid(s)`.
+- Process:
+  - If **no parameters** are provided, return all available timeseries data for that `pid`.
+  - If **startDate/endDate** are provided, return data for the given range.
+  - If **timestamp** is provided, return the data for the closest stored timestamp.
+
+## Setup Instructions
+
+1. Install dependencies:
+   ```sh
+   npm install
+   ```
+
+2. Start the PM2 cluster:
+  ```sh
+  pm2 start ecosystem.config.js
+  ```
+
+## Env Dependencies
+  ```
+  REDIS_CLIENT_CONFIG=
+  COINS_ELASTICSEARCH_CONFIG=
+  ```

@@ -31,18 +31,21 @@ function loadLocalMetadataCache() {
 }
 
 function saveLocalMetadataCache() {
-  try {
-    ensureCacheFileExists();
-    fs.writeFileSync(
-      METADATA_JSON_PATH,
-      JSON.stringify(localMetadataCache, null, 2),
-      'utf8'
-    );
-    console.log(`Cache saved to ${METADATA_JSON_PATH}`);
-  } catch (err) {
-    console.error("Failed to write local metadata cache file:", err);
-  }
+  ensureCacheFileExists();
+  fs.writeFile(
+    METADATA_JSON_PATH,
+    JSON.stringify(localMetadataCache, null, 2),
+    'utf8',
+    (err) => {
+      if (err) {
+        console.error("Failed to write local metadata cache file:", err);
+      } else {
+        console.log(`Cache saved to ${METADATA_JSON_PATH}`);
+      }
+    }
+  );
 }
+
 
 function initCacheWatcher() {
   loadLocalMetadataCache();
@@ -70,7 +73,7 @@ async function getAllMetadata() {
     throw new Error('No Elasticsearch client available.');
   }
 
-  const pageSize = 10000;
+  const pageSize = 100000;
   const allDocs = [];
 
   let response = await client.search({
