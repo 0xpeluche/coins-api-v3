@@ -1,38 +1,36 @@
 const { Server } = require('hyper-express');
 const fs = require('fs');
 const path = require('path');
-
-require('./jobs/metadataCron');
-
 const coinsRoutes = require('./routes/coinsRoutes');
+const { refreshLocalMetadataFromES } = require('./cache/metadataCache');
 
-const { refreshLocalMetadataFromES } = require('./services/coinsService');
+const node_instance = process.env.NODE_APP_INSTANCE;
 
-const dataDir = path.join(__dirname, 'data');
-const metadataFilePath = path.join(dataDir, 'metadata.json');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+if (node_instance == 0) {
+  require('./jobs/metadataCron');
+
+  const dataDir = path.join(__dirname, 'data');
+  const metadataFilePath = path.join(dataDir, 'metadata.json');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    console.log("Data directory created:", dataDir);
+  }
+  if (!fs.existsSync(metadataFilePath)) {
+    fs.writeFileSync(metadataFilePath, '{}', 'utf8');
+    console.log("Created empty metadata file:", metadataFilePath);
+  }
+  
+  refreshLocalMetadataFromES()
+    .then(() => console.log('Metadata cache initialized successfully.'))
+    .catch(err => console.error('Error initializing metadata cache:', err));
 }
-if (!fs.existsSync(metadataFilePath)) {
-  fs.writeFileSync(metadataFilePath, '{}', 'utf8');
-}
-
-refreshLocalMetadataFromES()
-  .then(() => console.log('Metadata cache initialized successfully.'))
-  .catch((err) => console.error('Error initializing metadata cache:', err));
 
 const app = new Server();
 
 app.use(async (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET,PUT,POST,DELETE,OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Api-Key'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key');
   if (req.method === 'OPTIONS') {
     return res.send(200);
   }
