@@ -81,8 +81,56 @@ async function getCoinsTimeseries(req, res) {
   }
 }
 
+/**
+ * GET /earliest
+ * Example: /api/coins/earliest?pid=bitcoin,ethereum
+ * Returns, for each coin, the earliest record (i.e. with the lowest timestamp).
+ */
+async function getCoinFirstTimestamp(req, res) {
+  try {
+    const { pid } = req.query;
+    if (!pid) {
+      res.statusCode = 400;
+      return res.send(JSON.stringify({ error: "Missing 'pid' query parameter." }));
+    }
+    const data = await coinsService.getCoinsEarliest({ pid });
+    res.header('Content-Type', 'application/json');
+    return res.send(JSON.stringify({ coins: data }));
+  } catch (error) {
+    res.statusCode = 400;
+    return res.send(JSON.stringify({ error: error.message || 'Internal Server Error' }));
+  }
+}
+
+/**
+ * GET /percentage-change
+ * Example: /api/coins/percentage-change?pid=bitcoin,ethereum&timestamp=1656944730&period=3600&lookForward=true
+ * Parameters:
+ * - pid: list of coins.
+ * - timestamp: a reference timestamp in seconds.
+ * - period: period (in seconds) to calculate the change.
+ * - lookForward: if true, change is from t0 to t0 + period; otherwise from t0 to t0 - period.
+ */
+async function getPercentageChange(req, res) {
+  try {
+    const { pid, timestamp, period, lookForward } = req.query;
+    if (!pid || !timestamp || !period) {
+      res.statusCode = 400;
+      return res.send(JSON.stringify({ error: "Missing required query parameters: pid, timestamp, period." }));
+    }
+    const data = await coinsService.getPercentageChange({ pid, timestamp, period, lookForward });
+    res.header('Content-Type', 'application/json');
+    return res.send(JSON.stringify({ coins: data }));
+  } catch (error) {
+    res.statusCode = 400;
+    return res.send(JSON.stringify({ error: error.message || 'Internal Server Error' }));
+  }
+}
+
 module.exports = {
   getCoinsMetadata,
   getCoinsCurrent,
-  getCoinsTimeseries
+  getCoinsTimeseries,
+  getCoinFirstTimestamp,
+  getPercentageChange
 };

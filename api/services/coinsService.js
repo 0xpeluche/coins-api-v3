@@ -279,8 +279,94 @@ async function getCoinsTimeseries({ pid, startDate, endDate, timestamp, scale })
   return grouped;
 }
 
+/**
+ * Retrieve the earliest document for a given normalized PID.
+ */
+async function getEarliestRecord(client, pid) {
+  const query = {
+    index: 'coins-timeseries-*',
+    size: 1,
+    body: {
+      query: { term: { pid } },
+      sort: [{ ts: { order: 'asc' } }]
+    }
+  };
+  const response = await client.search(query);
+  return response.hits?.hits[0]?._source || null;
+}
+
+/**
+ * Retrieve, for each coin (by original PID), the earliest record.
+ */
+async function getCoinsEarliest({ pid }) {
+  const client = getClient();
+  if (!client) {
+    throw new Error('No Elasticsearch client available.');
+  }
+  const { mapping, normalizedPids } = parsePidMapping(pid);
+  if (!normalizedPids.length) {
+    throw new Error("No valid 'pid' provided.");
+  }
+  const results = {};
+  for (const originalPid in mapping) {
+    const normalized = mapping[originalPid];
+    const earliestDoc = await getEarliestRecord(client, normalized);
+    results[originalPid] = earliestDoc;
+  }
+  return results;
+}
+
+/**
+ * Retrieve percentage change in price between two timestamps.
+ * Parameters:
+ * - pid: list of coins.
+ * - timestamp: a reference timestamp in seconds.
+ * - period: the period (in seconds) to look forward (if lookForward is true) or backward.
+ * - lookForward: if true, change is calculated from t0 to t0 + period, otherwise from t0 to t0 - period.
+ */
+async function getPercentageChange({ pid, timestamp, period, lookForward }) {
+  const client = getClient();
+  if (!client) {
+    throw new Error('No Elasticsearch client available.');
+  }
+  const { mapping, normalizedPids } = parsePidMapping(pid);
+  if (!normalizedPids.length) {
+    throw new Error("No valid 'pid' provided.");
+  }
+  
+  const t0 = parseInt(timestamp, 10) * 1000;
+  if (isNaN(t0)) {
+    throw new Error("Invalid timestamp format. It should be an integer in seconds.");
+  }
+  
+  const periodSec = Number(period);
+  if (isNaN(periodSec)) {
+    throw new Error("Invalid period format. It should be a number representing seconds.");
+  }
+  
+  const t1 = (lookForward === 'true' || lookForward === true)
+    ? t0 + periodSec * 1000
+    : t0 - periodSec * 1000;
+  
+  const results = {};
+  for (const originalPid in mapping) {
+    const normalized = mapping[originalPid];
+    const doc0 = await findClosestDocForPid(client, normalized, t0);
+    const doc1 = await findClosestDocForPid(client, normalized, t1);
+    if (!doc0 || !doc1 || doc0.price === 0) {
+      results[originalPid] = null;
+    } else {
+      const percentageChange = ((doc1.price - doc0.price) / doc0.price) * 100;
+      results[originalPid] = percentageChange;
+    }
+  }
+  return results;
+}
+
 module.exports = {
   getCoinMetadata,
   getCoinsService,
   getCoinsTimeseries,
+  getCoinsEarliest,
+  getPercentageChange
 };

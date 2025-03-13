@@ -2,54 +2,112 @@
 
 ## Overview
 
-This is a prototype PR of an API that manages cryptocurrency metadata, current prices, and timeseries data using a PM2 cluster with load balancing and local caching.
+This is a prototype PR of an API that manages cryptocurrency metadata, current prices, and timeseries data. The API uses:
+
+- **PM2 Cluster** for load balancing and auto-restart.
+- **Local Caching** for metadata (managed in a dedicated module).
+- **Elasticsearch** for historical timeseries data.
+- **Redis** for current price data.
 
 ## Features
 
-- **PM2 Cluster Setup**:
-  - `index.js` configured to launch 4 instances of the API using PM2 for load balancing and auto-restart.
-- **Local Cache Management (controlled by PM2 instance 0)**:
-  - On API initialization, instance 0 fetches all metadata from Elasticsearch (ES) to create a local file.
-  - A cron job runs every 15 minutes to refresh the metadata.
-- **Multiple Routes**:
+- **PM2 Cluster Setup**  
+  The API is designed to run in a PM2 cluster. Instance 0 is responsible for fetching the initial metadata refresh (if enabled) while all instances serve the endpoints.
 
-### Routes
+- **Local Cache Management**  
+  Metadata is cached locally in a file (e.g., `api/data/metadata.json`). The cache is maintained via a dedicated module (`cache/metadataCache.js`).  
+  **Note:** The metadata refresh cron is now managed externally (e.g., via Coolify) using a separate script.
 
-#### 1. Metadata Route
+- **Normalized PID Mapping**  
+  Coin IDs (pids) are normalized using the helper `normalizeCoinId` (from `utils/index.js`) and a mapping is maintained between the input pid and its normalized value. A maximum of 100 pids per request is allowed.
 
-`GET /api/coins/metadata?pid=bitcoin,ethereum`
+## Endpoints
 
-- Retrieves metadata of a token based on the specified `pid(s)`.
-- Process:
-  - Check in the local cache if the `pid` exists:
-    - If **Yes**, return the object.
-    - If **No**, check in Elasticsearch (ES):
-      <!-- - If **found**, cache the metadata (helps until the next cron job). -->
-      - If **not found**, return an error.
+### 1. Metadata Route
 
-#### 2. Current Price Route
+**GET** `/api/coins/metadata?pid=bitcoin,ethereum`
 
-`GET /api/coins/current?pid=bitcoin,ethereum&withMetadata=true&withTTL=true`
+- **Description:**  
+  Retrieves metadata for the specified coin IDs.
+  
+- **Process:**  
+  - The API checks the local cache for each pid (using normalized values).
+  - If metadata for a pid is missing, it returns `null` (no fallback to Elasticsearch is performed).
 
-- Retrieves the current price of a token based on the specified `pid(s)`.
-- Options:
-  - `withMetadata=true`: Includes metadata from the same source as the metadata route.
+### 2. Current Price Route
+
+**GET** `/api/coins/current?pid=bitcoin,ethereum&withMetadata=true&withTTL=true`
+
+- **Description:**  
+  Retrieves the current price of the specified coins from Redis.
+  
+- **Options:**  
+  - `withMetadata=true`: Includes metadata.
   - `withTTL=true`: Includes TTL information.
-- Process:
-  - First, check in Redis via `price_${pid}`:
-    - If **Yes**, return the object (with metadata if requested).
-    <!-- - If **No**, fallback to querying Elasticsearch (ES) (potential recovery if Nifi/Redis fails).
-    - **Note**: Currently, no fallback is implemented, it simply returns an error. -->
+  
+- **Process:**  
+  - The API queries Redis using keys formatted as `price_<normalized_pid>`.
+  - If requested, metadata is attached by mapping the original pid to its cache entry.
 
-#### 3. Timeseries Route
+### 3. Timeseries Route
 
-`GET /api/coins/timeseries?pid=bitcoin&startDate=2023-01-01&endDate=2023-01-31` OR `GET /api/coins/timeseries?pid=bitcoin,ethereum&timestamp=1673000000`
+**GET** `/api/coins/timeseries?pid=bitcoin&startDate=2023-01-01&endDate=2023-01-31`  
+or  
+**GET** `/api/coins/timeseries?pid=bitcoin,ethereum&timestamp=1673000000`  
+or with scale:  
+**GET** `/api/coins/timeseries?pid=bitcoin,ethereum&startDate=2023-01-01&endDate=2023-01-31&scale=5m`
 
-- Retrieves historical timeseries data of a token based on the specified `pid(s)`.
-- Process:
-  - If **no parameters** are provided, return all available timeseries data for that `pid`.
-  - If **startDate/endDate** are provided, return data for the given range.
-  - If **timestamp** is provided, return the data for the closest stored timestamp.
+- **Description:**  
+  Retrieves historical timeseries data for the specified coin IDs.
+  
+- **Modes:**  
+  - **Timestamp mode:**  
+    If a `timestamp` (in seconds) is provided, the API returns, for each coin, the document whose `ts` is closest to that timestamp.
+  
+  - **Range mode:**  
+    If `startDate` and `endDate` are provided, the API returns all matching records (grouped by coin).
+  
+  - **Scale mode:**  
+    If a `scale` (e.g., "1m", "5m", "1h", "1d") is provided along with `startDate` and `endDate`, the API performs an aggregation using a `date_histogram`.  
+    The response includes, for each coin, an array of objects per interval containing:
+    - `timestamp` (in seconds)
+    - `avg_price`
+    - `min_price`
+    - `max_price`
+    - `count`
+    
+  - **Note:**  
+    A check is performed to avoid exceeding the maximum number of buckets (e.g., 10,000). If too many buckets would be created, an error is returned.
+
+### 4. Earliest Timestamp Route
+
+**GET** `/api/coins/earliest?pid=bitcoin,ethereum`
+
+- **Description:**  
+  Retrieves, for each coin, the earliest available timeseries record (i.e., the record with the lowest timestamp).
+  
+- **Process:**  
+  - For each provided pid, the API queries Elasticsearch for the document with the smallest `ts`.
+
+### 5. Percentage Change Route
+
+**GET** `/api/coins/percentage-change?pid=bitcoin,ethereum&timestamp=1656944730&period=3600&lookForward=true`
+
+- **Description:**  
+  Calculates the percentage change in price for each coin between two points in time.
+  
+- **Parameters:**  
+  - `timestamp`: A reference timestamp in seconds (t₀).
+  - `period`: The period (in seconds) over which to calculate the change.
+  - `lookForward`:  
+    - If `true`, the change is measured from t₀ to t₀ + period (i.e., forward in time).  
+    - If `false` or not provided, the change is measured from t₀ to t₀ - period (i.e., backward in time).
+  
+- **Process:**  
+  - For each coin, the API retrieves the document closest to t₀ and another at t₀ + period (or t₀ - period), then calculates the percentage change as:  
+    ```
+    ((price_t1 - price_t0) / price_t0) * 100
+    ```
 
 ## Setup Instructions
 
@@ -60,7 +118,7 @@ This is a prototype PR of an API that manages cryptocurrency metadata, current p
 
 2. Start the PM2 cluster:
   ```sh
-  pm2 start ecosystem.config.js
+   pm2 start ecosystem.config.js
   ```
 
 ## Env Dependencies
