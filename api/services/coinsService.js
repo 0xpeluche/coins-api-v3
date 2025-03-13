@@ -230,11 +230,10 @@ async function getCoinsTimeseries({ pid, startDate, endDate, timestamp, scale })
       const originalPid = Object.keys(mapping).find(key => mapping[key] === normPid) || normPid;
       results[originalPid] = bucket.by_interval.buckets.map(b => ({
           timestamp: b.key / 1000,
-          timestamp_str: b.key_as_string,
-          count: b.doc_count,
           avg_price: b.avg_price.value,
           min_price: b.min_price.value,
-          max_price: b.max_price.value
+          max_price: b.max_price.value,
+          count: b.doc_count,
       }));
     }
     return results;
