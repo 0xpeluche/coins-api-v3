@@ -120,7 +120,6 @@ async function findClosestDocForPid(client, pid, timestampMs) {
  *   convert them to UTC (start: T00:00:00Z, end: T23:59:59Z), convert to ms,
  *   perform a range query and group the matching documents by the original PID.
  */
-
 function scaleToMillis(scale) {
   const match = scale.match(/^(\d+)([mhd])$/);
   if (!match) {
@@ -230,7 +229,7 @@ async function getCoinsTimeseries({ pid, startDate, endDate, timestamp, scale })
       const normPid = bucket.key;
       const originalPid = Object.keys(mapping).find(key => mapping[key] === normPid) || normPid;
       results[originalPid] = bucket.by_interval.buckets.map(b => ({
-          timestamp: b.key,           // in milliseconds
+          timestamp: b.key / 1000,
           timestamp_str: b.key_as_string,
           count: b.doc_count,
           avg_price: b.avg_price.value,
