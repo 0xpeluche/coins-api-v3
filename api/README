@@ -24,7 +24,7 @@ This is a prototype PR of an API that manages cryptocurrency metadata, current p
   - Check in the local cache if the `pid` exists:
     - If **Yes**, return the object.
     - If **No**, check in Elasticsearch (ES):
-      - If **found**, cache the metadata (helps until the next cron job).
+      <!-- - If **found**, cache the metadata (helps until the next cron job). -->
       - If **not found**, return an error.
 
 #### 2. Current Price Route
@@ -38,8 +38,8 @@ This is a prototype PR of an API that manages cryptocurrency metadata, current p
 - Process:
   - First, check in Redis via `price_${pid}`:
     - If **Yes**, return the object (with metadata if requested).
-    - If **No**, fallback to querying Elasticsearch (ES) (potential recovery if Nifi/Redis fails).
-    - **Note**: Currently, no fallback is implemented, it simply returns an error.
+    <!-- - If **No**, fallback to querying Elasticsearch (ES) (potential recovery if Nifi/Redis fails).
+    - **Note**: Currently, no fallback is implemented, it simply returns an error. -->
 
 #### 3. Timeseries Route
 

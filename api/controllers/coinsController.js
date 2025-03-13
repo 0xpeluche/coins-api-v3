@@ -13,7 +13,7 @@ async function getCoinsMetadata(req, res) {
       return res.send(JSON.stringify({ error: "Missing 'pid' query parameter." }));
     }
 
-    const data = await coinsService.getCoinMetadata({ pid });
+    const data = coinsService.getCoinMetadata({ pid });
     res.header('Content-Type', 'application/json');
     return res.send(JSON.stringify(data));
   } catch (error) {
@@ -64,14 +64,14 @@ async function getCoinsCurrent(req, res) {
  */
 async function getCoinsTimeseries(req, res) {
   try {
-    const { pid, startDate, endDate, timestamp } = req.query;
+    const { pid, startDate, endDate, timestamp, scale } = req.query;
 
     if (!pid) {
       res.statusCode = 400;
       return res.send(JSON.stringify({ error: "Missing 'pid' query parameter." }));
     }
 
-    const data = await coinsService.getCoinsTimeseries({ pid, startDate, endDate, timestamp });
+    const data = await coinsService.getCoinsTimeseries({ pid, startDate, endDate, timestamp, scale });
 
     res.header('Content-Type', 'application/json');
     return res.send(JSON.stringify(data));

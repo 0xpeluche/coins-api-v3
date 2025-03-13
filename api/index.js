@@ -2,13 +2,10 @@ const { Server } = require('hyper-express');
 const fs = require('fs');
 const path = require('path');
 const coinsRoutes = require('./routes/coinsRoutes');
-const { refreshLocalMetadataFromES } = require('./cache/metadataCache');
 
-const node_instance = process.env.NODE_APP_INSTANCE;
+const node_instance = process.env.NODE_APP_INSTANCE
 
 if (node_instance == 0) {
-  require('./jobs/metadataCron');
-
   const dataDir = path.join(__dirname, 'data');
   const metadataFilePath = path.join(dataDir, 'metadata.json');
   if (!fs.existsSync(dataDir)) {
@@ -19,10 +16,6 @@ if (node_instance == 0) {
     fs.writeFileSync(metadataFilePath, '{}', 'utf8');
     console.log("Created empty metadata file:", metadataFilePath);
   }
-  
-  refreshLocalMetadataFromES()
-    .then(() => console.log('Metadata cache initialized successfully.'))
-    .catch(err => console.error('Error initializing metadata cache:', err));
 }
 
 const app = new Server();
