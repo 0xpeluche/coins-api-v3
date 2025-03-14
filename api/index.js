@@ -2,6 +2,7 @@ const { Server } = require('hyper-express');
 const fs = require('fs');
 const path = require('path');
 const coinsRoutes = require('./routes/coinsRoutes');
+const { refreshLocalMetadataFromES } = require('./cache/metadataCache');
 
 const node_instance = process.env.NODE_APP_INSTANCE
 
@@ -15,6 +16,12 @@ if (node_instance == 0) {
   if (!fs.existsSync(metadataFilePath)) {
     fs.writeFileSync(metadataFilePath, '{}', 'utf8');
     console.log("Created empty metadata file:", metadataFilePath);
+  }
+
+  const metadataContent = fs.readFileSync(metadataFilePath, 'utf8');
+  if (metadataContent.trim() === '{}' || metadataContent.trim() === '') {
+    console.log("Metadata file is empty, refreshing from Elasticsearch...");
+    refreshLocalMetadataFromES();
   }
 }
 
