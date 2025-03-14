@@ -47,15 +47,12 @@ This is a prototype PR of an API that manages cryptocurrency metadata, current p
   
 - **Process:**  
   - The API queries Redis using keys formatted as `price_<normalized_pid>`.
-  - If requested, metadata is attached by mapping the original pid to its cache entry.
 
 ### 3. Timeseries Route
 
-**GET** `/api/coins/timeseries?pid=bitcoin&startDate=2023-01-01&endDate=2023-01-31`  
+**GET** `/api/coins/timeseries?pid=bitcoin,ethereum&startDate=2023-01-01&endDate=2023-01-31&scale=5m`  
 or  
 **GET** `/api/coins/timeseries?pid=bitcoin,ethereum&timestamp=1673000000`  
-or with scale:  
-**GET** `/api/coins/timeseries?pid=bitcoin,ethereum&startDate=2023-01-01&endDate=2023-01-31&scale=5m`
 
 - **Description:**  
   Retrieves historical timeseries data for the specified coin IDs.

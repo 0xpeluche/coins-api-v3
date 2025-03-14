@@ -30,7 +30,7 @@ async function getCoinsMetadata(req, res) {
  */
 async function getCoinsCurrent(req, res) {
   try {
-    const { pid, withMetadata = 'false', withTTL = 'false' } = req.query;
+    const { pid, withTTL = 'false' } = req.query;
 
     if (!pid) {
       res.statusCode = 400;
@@ -38,11 +38,9 @@ async function getCoinsCurrent(req, res) {
     }
 
     const includeTTL = (withTTL === 'true');
-    const includeMetadata = (withMetadata === 'true');
 
     const result = await coinsService.getCoinsService(pid, {
       withTTL: includeTTL,
-      withMetadata: includeMetadata
     });
 
     res.header('Content-Type', 'application/json');
@@ -95,7 +93,7 @@ async function getCoinFirstTimestamp(req, res) {
     }
     const data = await coinsService.getCoinsEarliest({ pid });
     res.header('Content-Type', 'application/json');
-    return res.send(JSON.stringify({ coins: data }));
+    return res.send(JSON.stringify(data));
   } catch (error) {
     res.statusCode = 400;
     return res.send(JSON.stringify({ error: error.message || 'Internal Server Error' }));
@@ -120,7 +118,7 @@ async function getPercentageChange(req, res) {
     }
     const data = await coinsService.getPercentageChange({ pid, timestamp, period, lookForward });
     res.header('Content-Type', 'application/json');
-    return res.send(JSON.stringify({ coins: data }));
+    return res.send(JSON.stringify(data));
   } catch (error) {
     res.statusCode = 400;
     return res.send(JSON.stringify({ error: error.message || 'Internal Server Error' }));

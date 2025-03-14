@@ -1,4 +1,3 @@
-
 function normalizeCoinId(coinId) {
   coinId = coinId.toLowerCase()
   const replaceSubStrings = ['asset#', 'coingecko#', 'coingecko:', 'ethereum:']
