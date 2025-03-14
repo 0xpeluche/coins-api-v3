@@ -41,7 +41,7 @@ async function getCoinsEarliest({ pid }) {
   const metadataMap = getCoinMetadata({ pid });
   for (const originalPid in mapping) {
     if (!metadataMap[originalPid]) {
-      throw new Error(`Missing metadata for coin ${originalPid}`);
+      metadataMap[originalPid] = {};
     }
   }
   
@@ -54,17 +54,20 @@ async function getCoinsEarliest({ pid }) {
       if (earliestDoc) break;
     }
 
-    const { ts: timestamp, price } = earliestDoc
-    const { address, symbol, decimals, chain } = metadataMap[originalPid]
-    coins[originalPid] = {
-      pid: originalPid,
-      address,
-      symbol,
-      chain,
-      decimals,
-      timestamp,
-      price
-    };
+    if (!earliestDoc) {
+      coins[originalPid] = { pid: originalPid };
+    } else {
+      const { ts: timestamp, price } = earliestDoc;
+      coins[originalPid] = {
+        pid: originalPid,
+        address: metadataMap[originalPid].address,
+        symbol: metadataMap[originalPid].symbol,
+        chain: metadataMap[originalPid].chain,
+        decimals: metadataMap[originalPid].decimals,
+        timestamp,
+        price
+      };
+    }
   }
   return { coins };
 }

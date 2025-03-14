@@ -15,11 +15,11 @@ async function getCurrentCoin(pidString, options = {}) {
   }
   const redisKeys = normalizedPids.map(pid => `price_${pid}`);
   const coinsData = await getMultipleKeyDetails(redisKeys, withTTL);
-  const metadataMap = getCoinMetadata({ pid: pidString });
 
+  const metadataMap = getCoinMetadata({ pid: pidString });
   for (const originalPid in mapping) {
     if (!metadataMap[originalPid]) {
-      throw new Error(`Missing metadata for coin ${originalPid}`);
+      metadataMap[originalPid] = {};
     }
   }
   

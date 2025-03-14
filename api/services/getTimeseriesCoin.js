@@ -79,10 +79,9 @@ async function getTimeseries({ pid, startDate, endDate, timestamp, scale }) {
   }
   
   const metadata = getCoinMetadata({ pid });
-  
-  for (const originalPid in mapping) {
+    for (const originalPid in mapping) {
     if (!metadata[originalPid]) {
-      throw new Error(`Missing metadata for coin ${originalPid}`);
+      metadata[originalPid] = {};
     }
   }
   

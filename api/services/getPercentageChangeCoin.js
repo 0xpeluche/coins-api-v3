@@ -76,7 +76,7 @@ async function getPercentageChange({ pid, timestamp, period, lookForward }) {
   const metadataMap = getCoinMetadata({ pid });
   for (const originalPid in mapping) {
     if (!metadataMap[originalPid]) {
-      throw new Error(`Missing metadata for coin ${originalPid}`);
+      metadataMap[originalPid] = {};
     }
   }
   
