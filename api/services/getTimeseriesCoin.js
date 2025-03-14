@@ -111,19 +111,19 @@ async function getTimeseries({ pid, startDate, endDate, timestamp, scale }) {
     if (!scale) {
       scale = "1h";
     }
-    
-    const now = new Date();
+
+    let startMs, endMs;
+    const now = Date.now();
     if (!startDate && !endDate) {
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      startDate = yesterday.toISOString().slice(0,10);
-      endDate = now.toISOString().slice(0,10);
+      endMs = now;
+      startMs = now - 24 * 60 * 60 * 1000;
     } else if (startDate && !endDate) {
-      endDate = now.toISOString().slice(0,10);
+      startMs = new Date(startDate + "T00:00:00Z").getTime();
+      endMs = now;
+    } else {
+      startMs = new Date(startDate + "T00:00:00Z").getTime();
+      endMs = new Date(endDate + "T23:59:59Z").getTime();
     }
-    
-    const startMs = new Date(startDate + "T00:00:00Z").getTime();
-    const endMs = new Date(endDate + "T23:59:59Z").getTime();
     
     const effectiveMap = {};
     const candidateToOriginal = {};
