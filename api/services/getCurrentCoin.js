@@ -13,8 +13,6 @@ async function getCurrentCoin(pidString, options = {}) {
   if (!normalizedPids.length) {
     throw new Error("The 'pid' query parameter must contain at least one valid pid.");
   }
-  const redisKeys = normalizedPids.map(pid => `price_${pid}`);
-  const coinsData = await getMultipleKeyDetails(redisKeys, withTTL);
 
   const metadataMap = getCoinMetadata({ pid: pidString });
   for (const originalPid in mapping) {
@@ -22,6 +20,16 @@ async function getCurrentCoin(pidString, options = {}) {
       metadataMap[originalPid] = {};
     }
   }
+
+  const unionCandidatesSet = new Set();
+  for (const originalPid in mapping) {
+    const effectiveCandidates = getEffectivePids(originalPid, mapping, metadataMap);
+    effectiveCandidates.forEach(candidate => unionCandidatesSet.add(candidate));
+  }
+
+  const unionCandidates = Array.from(unionCandidatesSet);
+  const redisKeys = unionCandidates.map(pid => `price_${pid}`);
+  const coinsData = await getMultipleKeyDetails(redisKeys, withTTL);
   
   const coins = {};
   for (const originalPid in mapping) {
