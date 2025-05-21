@@ -4,7 +4,7 @@ const path = require('path');
 const coinsRoutes = require('./routes/coinsRoutes');
 const { refreshLocalMetadataFromES } = require('./cache/metadataCache');
 
-const node_instance = process.env.NODE_APP_INSTANCE
+const node_instance = process.env.NODE_APP_INSTANCE || 0;
 
 if (node_instance == 0) {
   const dataDir = path.join(__dirname, 'data');
